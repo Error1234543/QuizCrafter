@@ -2,91 +2,87 @@ import json
 import os
 
 from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_community.vectorstores import FAISS
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import FakeEmbeddings
 
 from template import SYSTEM_MSG, USER_MSG
 
+
 class QuizCrafter:
-def init(self) -> None:
-self.system = SYSTEM_MSG
-self.user = USER_MSG
+    def __init__(self):
+        self.system = SYSTEM_MSG
+        self.user = USER_MSG
 
-    self.llm = ChatGroq(
-        groq_api_key=os.getenv("GROQ_API_KEY"),
-        model_name="llama-3.3-70b-versatile",
-        temperature=0.7,
-    )
+        self.embeddings = FakeEmbeddings(size=384)
 
-    self.documents = []
+        self.llm = ChatGroq(
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+            model_name="llama-3.3-70b-versatile",
+            temperature=0.7,
+        )
 
-def load_docs(self, file_path):
-    print("Loading document...")
+    def load_docs(self, file_path):
+        loader = PyMuPDFLoader(file_path)
+        self.documents = loader.load()
+        return self.documents
 
-    loader = PyMuPDFLoader(file_path)
-    self.documents = loader.load()
+    def split_docs(self, documents):
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=700,
+            chunk_overlap=20
+        )
+        return splitter.split_documents(documents)
 
-    print("Document loaded successfully.")
-    return self.documents
+    def create_index(self):
+        docs = self.split_docs(self.documents)
 
-def load_chat_msg(self, topic):
-    print("Preparing context...")
+        self.index = FAISS.from_documents(
+            docs,
+            self.embeddings
+        )
 
-    text = ""
+        return self.index
 
-    # Render free plan ke liye limited pages
-    for doc in self.documents[:20]:
-        text += doc.page_content + "\n"
+    def get_similar_docs(self, index, query, k=4):
+        return index.similarity_search(query=query, k=k)
 
-    context = text[:12000]
+    def load_chat_msg(self, topic):
+        index = self.create_index()
 
-    messages = [
-        SystemMessage(content=self.system),
-        HumanMessage(
-            content=self.user.format(
-                context=context,
-                topic=topic
-            )
-        ),
-    ]
+        query_docs = self.get_similar_docs(
+            index=index,
+            query=topic,
+            k=4
+        )
 
-    return messages
+        text = "\n".join(
+            [doc.page_content for doc in query_docs]
+        )
 
-def get_questions(self, topic):
-    print("Generating questions...")
+        return [
+            SystemMessage(content=self.system),
+            HumanMessage(
+                content=self.user.format(context=text)
+            ),
+        ]
 
-    messages = self.load_chat_msg(topic)
+    def get_questions(self, topic):
+        msg = self.load_chat_msg(topic)
 
-    result = self.llm.invoke(messages)
-    result = str(result.content).strip()
+        result = self.llm.invoke(msg)
 
-    if result.startswith("```json"):
-        result = result[7:]
+        result = str(result.content).strip()
 
-    if result.endswith("```"):
-        result = result[:-3]
+        if result.startswith("```json"):
+            result = result[7:]
 
-    result = result.strip()
+        if result.endswith("```"):
+            result = result[:-3]
 
-    try:
-        questions = json.loads(result)
-
-        with open(
-            "questions.json",
-            "w",
-            encoding="utf-8"
-        ) as f:
-            json.dump(
-                questions,
-                f,
-                indent=4,
-                ensure_ascii=False
-            )
-
-        print("Questions generated successfully.")
-        return questions
-
-    except Exception as e:
-        print("JSON Parse Error:", e)
-        print(result)
-        return []
+        try:
+            return json.loads(result)
+        except:
+            return []
