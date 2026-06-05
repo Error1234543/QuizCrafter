@@ -16,7 +16,7 @@ class QuizCrafter:
         self.llm = ChatGroq(
             groq_api_key=os.getenv("GROQ_API_KEY"),
             model_name="llama-3.3-70b-versatile",
-            temperature=0.3, # ગુજરાતી સચોટ રાખવા તાપમાન ઓછું કર્યું છે
+            temperature=0.3,
         )
 
     def load_docs(self, file_path):
@@ -25,7 +25,6 @@ class QuizCrafter:
         return self.documents
 
     def load_chat_msg(self, topic):
-        # આખી PDF નો ટેક્સ્ટ એકસાથે ભેગો કરવો જેથી બધા પ્રશ્નો આવી જાય
         full_text = "\n".join([doc.page_content for doc in self.documents])
 
         sys_content = (
@@ -51,12 +50,14 @@ class QuizCrafter:
         result = self.llm.invoke(msg)
         result = str(result.content).strip()
 
-        if result.startswith("```json"):
+        # અહીં સિંગલ કોટ્સ વાપરીને ક્લીન ફિક્સ કર્યું છે જેથી કોપી-પેસ્ટમાં તકલીફ ન પડે
+        if result.startswith('```json'):
             result = result[7:]
 
-        if result.endswith("
-```"):
+        if result.endswith('```'):
             result = result[:-3]
+
+        result = result.strip()
 
         try:
             return json.loads(result)
