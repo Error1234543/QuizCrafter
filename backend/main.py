@@ -22,7 +22,6 @@ app.add_middleware(
 
 # Load the QuizCrafter
 ques_llm = QuizCrafter(base_url="http://192.168.0.105:11434")
-
 # Directory for uploaded PDFs
 UPLOAD_FOLDER = "./uploads"
 
