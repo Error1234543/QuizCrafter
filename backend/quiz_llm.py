@@ -49,7 +49,7 @@ class QuizCrafter:
     def get_similar_docs(self, index, query, k=4):
         return index.similarity_search(query=query, k=k)
 
-    def load_chat_msg(self, topic):
+    def load_chat_msg(self, topic, num_questions):
         index = self.create_index()
 
         query_docs = self.get_similar_docs(
@@ -62,15 +62,20 @@ class QuizCrafter:
             [doc.page_content for doc in query_docs]
         )
 
+        # पुराना सिस्टम मैसेज और यूजर मैसेज लोड करें
+        sys_content = self.system
+        user_content = self.user.format(context=text)
+
+        # AI को सख्त निर्देश देना कि उसे उतने ही सवाल बनाने हैं जितने यूजर ने मांगे हैं
+        extra_instruction = f"\n\nCRITICAL DIRECTIVE: You must generate exactly {num_questions} multiple choice questions. Ignore any previous instruction that asked for a different number of questions."
+        
         return [
-            SystemMessage(content=self.system),
-            HumanMessage(
-                content=self.user.format(context=text)
-            ),
+            SystemMessage(content=sys_content),
+            HumanMessage(content=user_content + extra_instruction),
         ]
 
-    def get_questions(self, topic):
-        msg = self.load_chat_msg(topic)
+    def get_questions(self, topic, num_questions=5):
+        msg = self.load_chat_msg(topic, num_questions)
 
         result = self.llm.invoke(msg)
 
