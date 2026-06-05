@@ -32,6 +32,8 @@ const App = () => {
       setFileUploaded(true);
     } catch (error) {
       console.error('Error uploading file:', error);
+      const serverMsg = error.response?.data?.detail || "ફાઇલ અપલોડ કરવામાં ભૂલ થઈ.";
+      alert(`Upload Error: ${serverMsg}`);
     }
   };
 
@@ -50,18 +52,19 @@ const App = () => {
         },
       });
       
-      // સુરક્ષા ચેક: જો ડેટા ખાલી આવે તો ક્રેશ થતો બચાવશે
       if (response.data && response.data.length > 0) {
         console.log("Questions requested successfully");
         setQuestions(response.data); 
         setQuizReady(true);
       } else {
-        alert("AI આ ટોપિક પર પ્રશ્નો બનાવી શક્યું નથી. કૃપા કરીને બીજો ટોપિક ટ્રાય કરો અથવા પ્રોમ્પટ ચેક કરો.");
+        alert("AI આ ટોપિક પર કોઈ પ્રશ્નો બનાવી શક્યું નથી. કૃપા કરીને બીજો કોઈ ટોપિક લખો.");
       }
       setLoading(false); 
     } catch (error) {
       console.error('Error generating quiz:', error);
-      alert("સર્વર તરફથી ભૂલ આવી છે, ફરી પ્રયાસ કરો.");
+      // આ સ્માર્ટ એલેર્ટ આપણને અસલી ભૂલ પકડવામાં મદદ કરશે:
+      const serverError = error.response?.data?.detail || error.message || "Unknown Server Error";
+      alert(`સર્વર એરર: ${serverError}`);
       setLoading(false);
     }
   };
@@ -71,14 +74,14 @@ const App = () => {
       {questions ? (
         <QuizPage questions={questions} />
       ) : (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
           {loading ? (
             <div className="flex items-center justify-center min-h-screen">
               <ClipLoader color="#4A90E2" size={50} />  
             </div>
           ) : (
             <div className="bg-white p-6 rounded shadow-md w-full max-w-md">
-              <h1 className="text-2xl font-bold mb-4">Upload PDF to Start Quiz</h1>
+              <h1 className="text-2xl font-bold mb-4 text-center">Upload PDF to Start Quiz</h1>
               <input
                 type="file"
                 onChange={handleFileChange}
@@ -86,7 +89,7 @@ const App = () => {
               />
               <button
                 onClick={handleUpload}
-                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-500 w-full"
+                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-500 w-full font-semibold transition"
               >
                 Upload
               </button>
@@ -122,7 +125,7 @@ const App = () => {
 
                   <button
                     onClick={handleStartQuiz}
-                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 w-full"
+                    className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 w-full font-semibold transition"
                   >
                     Start Quiz
                   </button>
@@ -136,5 +139,4 @@ const App = () => {
   );
 };
 
-// આ લાઇન હોવી ખૂબ જ જરૂરી છે જેનાથી Netlify ની એરર સોલ્વ થશે:
 export default App;
