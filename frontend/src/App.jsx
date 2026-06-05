@@ -41,7 +41,7 @@ const App = () => {
     formData.append('topic', topic);
 
     try {
-      const response = await axios.post('http://192.168.0.105:8000/generate-questions/', formData, {
+      const response = await axios.post('https://quizcrafter-k3r8.onrender.com/generate-questions/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
