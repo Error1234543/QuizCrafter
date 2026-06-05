@@ -1,4 +1,3 @@
-
 import json
 import os
 
@@ -14,7 +13,7 @@ class QuizCrafter:
         self.system = SYSTEM_MSG
         self.user = USER_MSG
 
-        # ફ્રી કી માટે બેસ્ટ અને સુપર ફાસ્ટ મોડેલ સેટ કર્યું જે રેટ લિમિટ એરર નહીં આપે
+        # ફ્રી કી માટે બેસ્ટ અને સુપર ફાસ્ટ મોડેલ જે રેટ લિમિટ એરર નહીં આપે
         self.llm = ChatGroq(
             groq_api_key=os.getenv("GROQ_API_KEY"),
             model_name="llama-3.1-8b-instant",
@@ -54,8 +53,11 @@ class QuizCrafter:
             result = self.llm.invoke(msg)
             result = str(result.content).strip()
 
+            # JSON માર્કડાઉન સાફ કરવાની એકદમ સેફ રીત (જેથી કોઈ સિંટેક્સ એરર ન આવે)
             if result.startswith("```json"):
                 result = result[7:]
+            elif result.startswith("```"):
+                result = result[3:]
 
             if result.endswith("
 ```"):
