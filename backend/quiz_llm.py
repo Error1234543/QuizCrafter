@@ -1,3 +1,4 @@
+
 import json
 import os
 
@@ -13,9 +14,10 @@ class QuizCrafter:
         self.system = SYSTEM_MSG
         self.user = USER_MSG
 
+        # ફ્રી કી માટે બેસ્ટ અને સુપર ફાસ્ટ મોડેલ સેટ કર્યું જે રેટ લિમિટ એરર નહીં આપે
         self.llm = ChatGroq(
             groq_api_key=os.getenv("GROQ_API_KEY"),
-            model_name="llama-3.3-70b-versatile",
+            model_name="llama-3.1-8b-instant",
             temperature=0.3,
         )
 
@@ -33,8 +35,9 @@ class QuizCrafter:
             "generate questions and answers in Gujarati script)."
         )
         
+        # ટોકન લિમિટ બચાવવા માટે ટેક્સ્ટ સ્લાઈસ 8000 કેરેક્ટર સુધી સેટ કરી છે
         user_content = (
-            f"Here is the context from the PDF:\n\n{full_text[:15000]}\n\n"
+            f"Here is the context from the PDF:\n\n{full_text[:8000]}\n\n"
             f"Task: Based on the topic '{topic}', generate exactly {num_questions} multiple choice questions. "
             "Output must be a valid JSON array of objects. Each object must have 'question', 'options' (array of strings), and 'correct_answer' (string matching the exact starting text of the correct option)."
         )
@@ -47,19 +50,19 @@ class QuizCrafter:
     def get_questions(self, topic, num_questions=5):
         msg = self.load_chat_msg(topic, num_questions)
 
-        result = self.llm.invoke(msg)
-        result = str(result.content).strip()
-
-        # અહીં બધે ડબલ કોટ્સ વાપર્યા છે જેથી કોપી કરવામાં કોઈ ભૂલ ન થાય
-        if result.startswith("```json"):
-            result = result[7:]
-
-        if result.endswith("```"):
-            result = result[:-3]
-
-        result = result.strip()
-
         try:
+            result = self.llm.invoke(msg)
+            result = str(result.content).strip()
+
+            if result.startswith("```json"):
+                result = result[7:]
+
+            if result.endswith("
+```"):
+                result = result[:-3]
+
+            result = result.strip()
             return json.loads(result)
-        except:
+        except Exception as e:
+            print(f"LLM Error: {str(e)}")
             return []
