@@ -40,13 +40,17 @@ def format_questions(questions):
     formatted_questions = []
 
     for question_obj in questions:
+        # अगर AI से रिस्पॉन्स खाली या गलत फॉर्मेट में आए तो क्रैश होने से बचाए
+        if not question_obj or "question" not in question_obj or "options" not in question_obj:
+            continue
+            
         formatted_question = {
             "question": question_obj["question"],
             "answers": [
                 {
                     "text": option,
                     "correct": option.startswith(
-                        question_obj["correct_answer"]
+                        question_obj.get("correct_answer", "")
                     ),
                 }
                 for option in question_obj["options"]
@@ -89,7 +93,8 @@ async def upload_pdf(file: UploadFile = File(...)):
     response_model=List[QuestionResponse]
 )
 async def generate_questions(
-    topic: str = Form(...)
+    topic: str = Form(...),
+    num_questions: int = Form(5)  # <-- यहाँ नया पैरामीटर जोड़ा, डिफ़ॉल्ट 5 रहेगा
 ):
     try:
         pdf_path = os.path.join(
@@ -97,9 +102,16 @@ async def generate_questions(
             "book.pdf"
         )
 
+        if not os.path.exists(pdf_path):
+            raise HTTPException(
+                status_code=400,
+                detail="कृपया पहले PDF फाइल अपलोड करें।"
+            )
+
         ques_llm.load_docs(pdf_path)
 
-        questions = ques_llm.get_questions(topic)
+        # यहाँ हम topic के साथ सवालों की संख्या भी भेज रहे हैं
+        questions = ques_llm.get_questions(topic, num_questions)
 
         formatted_questions = format_questions(
             questions
@@ -107,6 +119,8 @@ async def generate_questions(
 
         return formatted_questions
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(
             status_code=500,
