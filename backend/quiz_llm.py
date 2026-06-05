@@ -18,10 +18,14 @@ self.user = USER_MSG
         temperature=0.7,
     )
 
+    self.documents = []
+
 def load_docs(self, file_path):
     print("Loading document...")
+
     loader = PyMuPDFLoader(file_path)
     self.documents = loader.load()
+
     print("Document loaded successfully.")
     return self.documents
 
@@ -30,7 +34,7 @@ def load_chat_msg(self, topic):
 
     text = ""
 
-    # Sirf initial pages load karo RAM bachane ke liye
+    # Render free plan ke liye limited pages
     for doc in self.documents[:20]:
         text += doc.page_content + "\n"
 
@@ -51,9 +55,9 @@ def load_chat_msg(self, topic):
 def get_questions(self, topic):
     print("Generating questions...")
 
-    msg = self.load_chat_msg(topic)
+    messages = self.load_chat_msg(topic)
 
-    result = self.llm.invoke(msg)
+    result = self.llm.invoke(messages)
     result = str(result.content).strip()
 
     if result.startswith("```json"):
@@ -79,6 +83,7 @@ def get_questions(self, topic):
                 ensure_ascii=False
             )
 
+        print("Questions generated successfully.")
         return questions
 
     except Exception as e:
