@@ -24,18 +24,18 @@ class QuizCrafter:
         self.documents = loader.load()
         return self.documents
 
-    def load_chat_msg(self, topic):
+    def load_chat_msg(self, topic, num_questions):
         full_text = "\n".join([doc.page_content for doc in self.documents])
 
         sys_content = (
-            "You are an expert exam paper generator. Extract or generate ALL possible multiple-choice questions "
+            f"You are an expert exam paper generator. Extract or generate exactly {num_questions} multiple-choice questions "
             "from the provided document. Strictly adhere to the requested language (e.g., if the text is in Gujarati, "
             "generate questions and answers in Gujarati script)."
         )
         
         user_content = (
-            f"Here is the entire context from the PDF:\n\n{full_text}\n\n"
-            f"Task: Based on the topic '{topic}' (or the entire content if topic is broad), extract/generate ALL multiple choice questions hidden in this text. "
+            f"Here is the context from the PDF:\n\n{full_text[:15000]}\n\n"  # टोकન લિમિટ સાચવવા થોડો ટેક્સ્ટ લિમિટ કર્યો
+            f"Task: Based on the topic '{topic}', generate exactly {num_questions} multiple choice questions. "
             "Output must be a valid JSON array of objects. Each object must have 'question', 'options' (array of strings), and 'correct_answer' (string matching the exact starting text of the correct option)."
         )
 
@@ -45,16 +45,17 @@ class QuizCrafter:
         ]
 
     def get_questions(self, topic, num_questions=5):
-        msg = self.load_chat_msg(topic)
+        # यहाँ हमने num_questions पास कर दिया है
+        msg = self.load_chat_msg(topic, num_questions)
 
         result = self.llm.invoke(msg)
         result = str(result.content).strip()
 
-        # અહીં સિંગલ કોટ્સ વાપરીને ક્લીન ફિક્સ કર્યું છે જેથી કોપી-પેસ્ટમાં તકલીફ ન પડે
         if result.startswith('```json'):
             result = result[7:]
 
-        if result.endswith('```'):
+        if result.endswith('
+```'):
             result = result[:-3]
 
         result = result.strip()
