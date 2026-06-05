@@ -2,11 +2,8 @@ import json
 import os
 
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_community.vectorstores import FAISS
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import FakeEmbeddings
 
 from template import SYSTEM_MSG, USER_MSG
 
@@ -16,12 +13,10 @@ class QuizCrafter:
         self.system = SYSTEM_MSG
         self.user = USER_MSG
 
-        self.embeddings = FakeEmbeddings(size=384)
-
         self.llm = ChatGroq(
             groq_api_key=os.getenv("GROQ_API_KEY"),
             model_name="llama-3.3-70b-versatile",
-            temperature=0.7,
+            temperature=0.3, # ગુજરાતી સચોટ રાખવા તાપમાન ઓછું કર્યું છે
         )
 
     def load_docs(self, file_path):
@@ -29,62 +24,38 @@ class QuizCrafter:
         self.documents = loader.load()
         return self.documents
 
-    def split_docs(self, documents):
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=700,
-            chunk_overlap=20
+    def load_chat_msg(self, topic):
+        # આખી PDF નો ટેક્સ્ટ એકસાથે ભેગો કરવો જેથી બધા પ્રશ્નો આવી જાય
+        full_text = "\n".join([doc.page_content for doc in self.documents])
+
+        sys_content = (
+            "You are an expert exam paper generator. Extract or generate ALL possible multiple-choice questions "
+            "from the provided document. Strictly adhere to the requested language (e.g., if the text is in Gujarati, "
+            "generate questions and answers in Gujarati script)."
         )
-        return splitter.split_documents(documents)
-
-    def create_index(self):
-        docs = self.split_docs(self.documents)
-
-        self.index = FAISS.from_documents(
-            docs,
-            self.embeddings
-        )
-
-        return self.index
-
-    def get_similar_docs(self, index, query, k=4):
-        return index.similarity_search(query=query, k=k)
-
-    def load_chat_msg(self, topic, num_questions):
-        index = self.create_index()
-
-        query_docs = self.get_similar_docs(
-            index=index,
-            query=topic,
-            k=4
-        )
-
-        text = "\n".join(
-            [doc.page_content for doc in query_docs]
-        )
-
-        # पुराना सिस्टम मैसेज और यूजर मैसेज लोड करें
-        sys_content = self.system
-        user_content = self.user.format(context=text)
-
-        # AI को सख्त निर्देश देना कि उसे उतने ही सवाल बनाने हैं जितने यूजर ने मांगे हैं
-        extra_instruction = f"\n\nCRITICAL DIRECTIVE: You must generate exactly {num_questions} multiple choice questions. Ignore any previous instruction that asked for a different number of questions."
         
+        user_content = (
+            f"Here is the entire context from the PDF:\n\n{full_text}\n\n"
+            f"Task: Based on the topic '{topic}' (or the entire content if topic is broad), extract/generate ALL multiple choice questions hidden in this text. "
+            "Output must be a valid JSON array of objects. Each object must have 'question', 'options' (array of strings), and 'correct_answer' (string matching the exact starting text of the correct option)."
+        )
+
         return [
             SystemMessage(content=sys_content),
-            HumanMessage(content=user_content + extra_instruction),
+            HumanMessage(content=user_content),
         ]
 
     def get_questions(self, topic, num_questions=5):
-        msg = self.load_chat_msg(topic, num_questions)
+        msg = self.load_chat_msg(topic)
 
         result = self.llm.invoke(msg)
-
         result = str(result.content).strip()
 
         if result.startswith("```json"):
             result = result[7:]
 
-        if result.endswith("```"):
+        if result.endswith("
+```"):
             result = result[:-3]
 
         try:
