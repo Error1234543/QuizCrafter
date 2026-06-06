@@ -53,14 +53,14 @@ class QuizCrafter:
             result = self.llm.invoke(msg)
             result = str(result.content).strip()
 
-            # JSON માર્કડાઉન સાફ કરવાની એકદમ સેફ રીત (જેથી કોઈ સિંટેક્સ એરર ન આવે)
+            # JSON માર્કડાઉન સાફ કરવાની એકદમ સેફ રીત
             if result.startswith("```json"):
                 result = result[7:]
-            elif result.startswith("```"):
+            elif result.startswith("
+```"):
                 result = result[3:]
 
-            if result.endswith("
-```"):
+            if result.endswith("```"):
                 result = result[:-3]
 
             result = result.strip()
