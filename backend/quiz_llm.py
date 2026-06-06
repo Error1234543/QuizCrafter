@@ -1,19 +1,16 @@
 import json
 import os
-
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
-
 from template import SYSTEM_MSG, USER_MSG
-
 
 class QuizCrafter:
     def __init__(self):
         self.system = SYSTEM_MSG
         self.user = USER_MSG
 
-        # ફ્રી કી માટે બેસ્ટ અને સુપર ફાસ્ટ મોડેલ જે રેટ લિમિટ એરર નહીં આપે
+        # ફ્રી કી માટે બેસ્ટ અને સુપર ફાસ્ટ મોડેલ
         self.llm = ChatGroq(
             groq_api_key=os.getenv("GROQ_API_KEY"),
             model_name="llama-3.1-8b-instant",
@@ -34,7 +31,6 @@ class QuizCrafter:
             "generate questions and answers in Gujarati script)."
         )
         
-        # ટોકન લિમિટ બચાવવા માટે ટેક્સ્ટ સ્લાઈસ 8000 કેરેક્ટર સુધી સેટ કરી છે
         user_content = (
             f"Here is the context from the PDF:\n\n{full_text[:8000]}\n\n"
             f"Task: Based on the topic '{topic}', generate exactly {num_questions} multiple choice questions. "
@@ -53,14 +49,13 @@ class QuizCrafter:
             result = self.llm.invoke(msg)
             result = str(result.content).strip()
 
-            # JSON માર્કડાઉન સાફ કરવાની એકદમ સેફ રીત
-            if result.startswith("```json"):
+            # એડિટર કટ ન થાય તે માટે બેકટીક્સની જગ્યાએ \x60 વાપર્યું છે
+            if result.startswith("\x60\x60\x60json"):
                 result = result[7:]
-            elif result.startswith("
-```"):
+            elif result.startswith("\x60\x60\x60"):
                 result = result[3:]
 
-            if result.endswith("```"):
+            if result.endswith("\x60\x60\x60"):
                 result = result[:-3]
 
             result = result.strip()
