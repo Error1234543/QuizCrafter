@@ -1,3 +1,4 @@
+
 import json
 import os
 from langchain_community.document_loaders import PyMuPDFLoader
@@ -47,19 +48,17 @@ class QuizCrafter:
 
         try:
             result = self.llm.invoke(msg)
-            result = str(result.content).strip()
+            content = str(result.content).strip()
 
-            # એડિટર કટ ન થાય તે માટે બેકટીક્સની જગ્યાએ \x60 વાપર્યું છે
-            if result.startswith("\x60\x60\x60json"):
-                result = result[7:]
-            elif result.startswith("\x60\x60\x60"):
-                result = result[3:]
-
-            if result.endswith("\x60\x60\x60"):
-                result = result[:-3]
-
-            result = result.strip()
-            return json.loads(result)
+            # ફૂલપ્રૂફ રીત: AI ગમે તેટલી વાતો કરે, આ ફક્ત [ અને ] ની વચ્ચેનો જ ડેટા ફિલ્ટર કરશે
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+            
+            if start_idx != -1 and end_idx != -1:
+                json_str = content[start_idx:end_idx + 1]
+                return json.loads(json_str)
+            
+            return json.loads(content)
         except Exception as e:
             print(f"LLM Error: {str(e)}")
             return []
